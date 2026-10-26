@@ -1,0 +1,10 @@
+{
+  "lookbackDays": 30,
+  "feeds": [
+    {
+      "id": "ethereum-blog",
+      "name": "Ethereum Foundation Blog",
+      "url": "https://blog.ethereum.org/en/feed.xml"
+    }
+  ]
+}

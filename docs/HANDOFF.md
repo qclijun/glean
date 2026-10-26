@@ -15,3 +15,7 @@
 ## README 与项目简介交接
 
 目标：补充 README，并按用户追加要求设置项目 description。README 现含产品定位、现有功能、快照与本地草稿边界、安装运行、构建预览、来源核验、Relic/POA 区别、评分上限、收益公式、数据维护、测试及 GitHub Issues 协作入口。GitHub 仓库简介和 package.json 的 description 使用同一句中文定位。验证：十八处本地文档链接有效，命令对应 package.json 脚本，Markdown 代码块闭合，包文件与锁文件依赖一致，生产构建通过；只改文档与元数据，未重复运行浏览器测试。证据：README.md、/tmp/glean-readme-verification.json、/tmp/glean-readme-build.log 及 GitHub 仓库简介读回结果。本阶段提交范围为 README、package.json 和交接记录，沿用同步 main 的授权。自动采集、后端投稿与实时买盘仍列为后续能力，未在文档中宣称已经实现。
+
+## 内部线索收集交接
+
+目标：按用户确认的 CLI 边界，交付首个只读内部线索收集功能。本阶段提交见 `git log -1`；新增可配置的 RSS/Atom 官方来源抓取命令、30 天回看、稳定 URL 去重和本地待核验 JSON 队列，输出目录被 Git 忽略，公开活动快照未改。证据见 `tests/collect-leads.test.ts`、`tools/collect-leads.mjs`、`config/lead-sources.json` 和 README 的“内部线索队列”；本地样本先红后绿，`npm test` 七项、构建和 Playwright 六项均通过。官方 Ethereum feed 冒烟首次收集五条，重跑新增零条；这些条目只是未核验线索，当前订阅源包含与奖励无关的文章。待办：人工核验并扩充定向官方源，再评估误报和召回；没有自动发布、社交平台抓取或定时运行。
