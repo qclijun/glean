@@ -94,3 +94,32 @@ test('Atom entries are collected; a malformed existing queue is preserved', asyn
     await rm(directory, { recursive: true, force: true })
   }
 })
+
+test('valid empty RSS and Atom feeds produce an empty queue', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'glean-empty-feeds-'))
+  const server = createServer((request, response) => {
+    response.writeHead(200, { 'content-type': 'application/xml' })
+    response.end(request.url === '/rss'
+      ? '<rss version="2.0"><channel><title>Empty RSS</title><link>https://example.org/rss</link><description>No entries</description></channel></rss>'
+      : '<feed xmlns="http://www.w3.org/2005/Atom"><id>https://example.org/atom</id><title>Empty Atom</title><updated>2026-10-26T00:00:00Z</updated></feed>')
+  })
+  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
+  try {
+    const address = server.address()
+    assert.ok(address && typeof address !== 'string')
+    const sources = join(directory, 'sources.json')
+    const output = join(directory, 'leads.json')
+    const baseUrl = `http://127.0.0.1:${address.port}`
+    await writeFile(sources, JSON.stringify({ lookbackDays: 30, feeds: [
+      { id: 'empty-rss', name: 'Empty RSS', url: `${baseUrl}/rss` },
+      { id: 'empty-atom', name: 'Empty Atom', url: `${baseUrl}/atom` },
+    ] }))
+
+    const result = await runCollector(sources, output)
+    assert.equal(result.code, 0, result.stderr)
+    assert.deepEqual(JSON.parse(await readFile(output, 'utf8')), { version: 1, leads: [] })
+  } finally {
+    server.close()
+    await rm(directory, { recursive: true, force: true })
+  }
+})

@@ -50,8 +50,10 @@ function validateSources(config) {
 
 function entriesFrom(xml) {
   const parsed = new XMLParser({ ignoreAttributes: false }).parse(xml)
-  const entries = parsed?.rss?.channel?.item ?? parsed?.feed?.entry
-  if (entries === undefined) throw new Error('Expected RSS items or Atom entries')
+  const container = parsed?.rss?.channel ?? parsed?.feed
+  if (!container || typeof container !== 'object') throw new Error('Expected an RSS channel or Atom feed')
+  const entries = container.item ?? container.entry
+  if (entries === undefined) return []
   return Array.isArray(entries) ? entries : [entries]
 }
 
