@@ -6,7 +6,7 @@ Glean 希望帮助用户从分散的公告和社区信息中，找到低门槛�
 
 当前为**人工策展的前端工作台**，内置数据是 **2026-10-26 的研究快照**。活动状态、报价及资格可能变化，参与前应重新核对项目最新规则。
 
-[问题与建议](https://github.com/qclijun/glean/issues) · [活动核验记录](docs/research.md) · [Agent 配置](AGENTS.md)
+[问题与建议](https://github.com/qclijun/glean/issues) · [活动核验记录](docs/research.md) · [奖励活动来源选型](docs/research/web3-rewards-selection.md) · [术语](GLOSSARY.md) · [Agent 配置](AGENTS.md)
 
 ## 当前功能
 
