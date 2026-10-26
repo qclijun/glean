@@ -183,16 +183,19 @@ async function main() {
   const discoveredAt = new Date().toISOString()
   const cutoff = new Date(Date.now() - config.lookbackDays * 86400000)
   let added = 0
+  function enqueueLead(entry, source) {
+    const lead = leadFrom(entry, source, cutoff, discoveredAt)
+    if (!lead || seen.has(lead.id)) return
+    seen.add(lead.id)
+    queue.leads.push(lead)
+    added++
+  }
 
   for (const feed of config.feeds) {
     const response = await fetch(feed.url, { signal: AbortSignal.timeout(15000) })
     if (!response.ok) throw new Error(`${feed.id}: HTTP ${response.status}`)
     for (const entry of entriesFrom(await response.text())) {
-      const lead = leadFrom(entry, feed, cutoff, discoveredAt)
-      if (!lead || seen.has(lead.id)) continue
-      seen.add(lead.id)
-      queue.leads.push(lead)
-      added++
+      enqueueLead(entry, feed)
     }
   }
 
@@ -204,11 +207,7 @@ async function main() {
         url: `https://app.galxe.com/quest/${encodeURIComponent(space.slug)}`,
       }
       for await (const entry of galxeEntries(space, token)) {
-        const lead = leadFrom(entry, source, cutoff, discoveredAt)
-        if (!lead || seen.has(lead.id)) continue
-        seen.add(lead.id)
-        queue.leads.push(lead)
-        added++
+        enqueueLead(entry, source)
       }
     }
   }
