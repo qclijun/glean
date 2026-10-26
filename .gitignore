@@ -1,0 +1,36 @@
+# Dependencies and generated builds
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+
+# Test and coverage artifacts
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+coverage/
+
+# Local environment and credentials (keep example templates)
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.local
+/.aws/
+
+# Host-specific agent configuration
+/.agents/
+/.codex/
+
+# Logs, caches, and editor/OS files
+*.log
+.cache/
+.npm/
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
