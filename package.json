@@ -1,5 +1,6 @@
 {
   "name": "glean-web3",
+  "description": "聚合 Web3 奖励活动，结合预期收益、参与成本、时间投入与风险，提供有依据的参与建议与推荐指数。",
   "private": true,
   "version": "0.1.0",
   "type": "module",

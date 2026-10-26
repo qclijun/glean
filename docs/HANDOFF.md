@@ -11,3 +11,7 @@
 ## 工程技能配置交接
 
 目标：完成用户调用并逐项确认的 Matt Pocock 工程技能初始化。已选 GitHub Issues，目标为 qclijun/glean；新建 AGENTS.md，以三个短入口引用问题跟踪、默认标签、单一上下文领域文档规则。四个配置文件与确认草稿逐项一致，入口引用检查通过；GitHub 的 needs-triage、needs-info、ready-for-agent、ready-for-human、wontfix 五个标签已核验齐全，保留原有其他标签。领域术语表和 ADR 约定按需产生，当前配置未预填术语或决策。远程 origin 已绑定，首版提交 59b012c 已同步；本阶段仅提交配置及本交接记录，沿用此前同步 main 的授权。证据为 docs/agents/ 下三份配置、/tmp/glean-setup-verification.json 与 GitHub 标签列表。业务代码未变，无需重跑应用测试；后续可直接编辑配置，切换跟踪系统时再重跑 setup。
+
+## README 与项目简介交接
+
+目标：补充 README，并按用户追加要求设置项目 description。README 现含产品定位、现有功能、快照与本地草稿边界、安装运行、构建预览、来源核验、Relic/POA 区别、评分上限、收益公式、数据维护、测试及 GitHub Issues 协作入口。GitHub 仓库简介和 package.json 的 description 使用同一句中文定位。验证：十八处本地文档链接有效，命令对应 package.json 脚本，Markdown 代码块闭合，包文件与锁文件依赖一致，生产构建通过；只改文档与元数据，未重复运行浏览器测试。证据：README.md、/tmp/glean-readme-verification.json、/tmp/glean-readme-build.log 及 GitHub 仓库简介读回结果。本阶段提交范围为 README、package.json 和交接记录，沿用同步 main 的授权。自动采集、后端投稿与实时买盘仍列为后续能力，未在文档中宣称已经实现。
