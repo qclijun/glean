@@ -64,6 +64,90 @@ test('official RSS items enter the internal lead queue once, within the configur
   }
 })
 
+test('public channel RSS keeps the original post, publisher and feed identity across reruns', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'glean-channel-rss-'))
+  const publishedAt = new Date(Date.now() - 86400000).toISOString()
+  const updatedAt = new Date().toISOString()
+  const body = `<?xml version="1.0"?><rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:atom="http://www.w3.org/2005/Atom"><channel>
+    <title>Public announcements</title>
+    <item><title>Community bounty announcement</title><link>https://t.me/example_public_channel/42</link>
+      <guid isPermaLink="false">00042</guid><dc:creator>Original publisher</dc:creator>
+      <pubDate>${publishedAt}</pubDate><atom:updated>${updatedAt}</atom:updated>
+    </item>
+  </channel></rss>`
+  const server = createServer((_request, response) => { response.writeHead(200, { 'content-type': 'application/rss+xml' }); response.end(body) })
+  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
+  try {
+    const address = server.address()
+    assert.ok(address && typeof address !== 'string')
+    const sources = join(directory, 'sources.json')
+    const output = join(directory, 'leads.json')
+    const feedUrl = `http://127.0.0.1:${address.port}/telegram/channel/example_public_channel`
+    await writeFile(sources, JSON.stringify({ lookbackDays: 30, feeds: [{
+      id: 'public-announcements', name: 'Public announcements', url: feedUrl, siteUrl: 'https://t.me/s/example_public_channel',
+    }] }))
+
+    const first = await runCollector(sources, output)
+    assert.equal(first.code, 0, first.stderr)
+    const queue = JSON.parse(await readFile(output, 'utf8'))
+    assert.equal(queue.leads.length, 1)
+    const lead = queue.leads[0]
+    assert.equal(lead.url, 'https://t.me/example_public_channel/42')
+    assert.deepEqual(lead.source, {
+      id: 'public-announcements', name: 'Public announcements', url: feedUrl, siteUrl: 'https://t.me/s/example_public_channel',
+    })
+    assert.equal(lead.entryId, '00042')
+    assert.equal(lead.author, 'Original publisher')
+    assert.equal(lead.publishedAt, publishedAt)
+    assert.equal(lead.updatedAt, updatedAt)
+    assert.ok(lead.discoveredAt)
+    assert.equal(lead.status, 'unverified')
+
+    const second = await runCollector(sources, output)
+    assert.equal(second.code, 0, second.stderr)
+    assert.deepEqual(JSON.parse(await readFile(output, 'utf8')), queue)
+  } finally {
+    server.close()
+    await rm(directory, { recursive: true, force: true })
+  }
+})
+
+test('RSS permalink GUIDs provide announcement URLs while opaque GUIDs stay identifiers', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'glean-rss-guids-'))
+  const body = `<rss version="2.0"><channel><title>Official announcements</title>
+    <item><title>New grant round</title><guid>https://example.org/grants/round-2</guid><author>Grants team</author></item>
+    <item><title>Explicit permalink</title><guid isPermaLink="true">https://example.org/bounty</guid></item>
+    <item><title>Not a permalink</title><guid isPermaLink="false">https://example.org/internal-id</guid></item>
+    <item><title>Opaque ID</title><guid isPermaLink="false">00042</guid></item>
+  </channel></rss>`
+  const server = createServer((_request, response) => { response.writeHead(200, { 'content-type': 'application/rss+xml' }); response.end(body) })
+  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
+  try {
+    const address = server.address()
+    assert.ok(address && typeof address !== 'string')
+    const sources = join(directory, 'sources.json')
+    const output = join(directory, 'leads.json')
+    await writeFile(sources, JSON.stringify({ lookbackDays: 30, feeds: [{
+      id: 'announcements', name: 'Official announcements', url: `http://127.0.0.1:${address.port}/rss`,
+    }] }))
+
+    const result = await runCollector(sources, output)
+    assert.equal(result.code, 0, result.stderr)
+    const queue = JSON.parse(await readFile(output, 'utf8'))
+    assert.deepEqual(queue.leads.map((lead: { url: string }) => lead.url), [
+      'https://example.org/grants/round-2', 'https://example.org/bounty',
+    ])
+    assert.equal(queue.leads[0].entryId, 'https://example.org/grants/round-2')
+    assert.equal(queue.leads[0].author, 'Grants team')
+    assert.equal(queue.leads[0].publishedAt, null)
+    assert.equal(queue.leads[0].updatedAt, null)
+    assert.equal(queue.leads[1].author, null)
+  } finally {
+    server.close()
+    await rm(directory, { recursive: true, force: true })
+  }
+})
+
 test('Galxe quests from a known Space enter the same queue across pages and dedupe on rerun', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'glean-galxe-'))
   const cursors: Array<string | null> = []
@@ -138,8 +222,11 @@ test('a configured Galxe Space without a token fails before fetching and preserv
 test('Atom entries are collected; a malformed existing queue is preserved', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'glean-atom-'))
   const recent = new Date().toISOString()
+  const publishedAt = new Date(Date.now() - 86400000).toISOString()
   const body = `<?xml version="1.0"?><feed xmlns="http://www.w3.org/2005/Atom">
-    <entry><title>Builder bounty</title><link rel="alternate" href="https://example.org/builder"/><updated>${recent}</updated></entry>
+    <entry><id>tag:example.org,2026:builder</id><title>Builder bounty</title><author><name>Builder team</name></author>
+      <link rel="alternate" href="https://example.org/builder"/><published>${publishedAt}</published><updated>${recent}</updated>
+    </entry>
   </feed>`
   const server = createServer((_request, response) => { response.writeHead(200, { 'content-type': 'application/atom+xml' }); response.end(body) })
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
@@ -154,12 +241,54 @@ test('Atom entries are collected; a malformed existing queue is preserved', asyn
     assert.equal(collected.code, 0, collected.stderr)
     const queue = JSON.parse(await readFile(output, 'utf8'))
     assert.equal(queue.leads[0].url, 'https://example.org/builder')
-    assert.equal(queue.leads[0].publishedAt, recent)
+    assert.equal(queue.leads[0].entryId, 'tag:example.org,2026:builder')
+    assert.equal(queue.leads[0].author, 'Builder team')
+    assert.equal(queue.leads[0].publishedAt, publishedAt)
+    assert.equal(queue.leads[0].updatedAt, recent)
 
     await writeFile(output, '{bad json')
     const failed = await runCollector(sources, output)
     assert.notEqual(failed.code, 0)
     assert.equal(await readFile(output, 'utf8'), '{bad json')
+  } finally {
+    server.close()
+    await rm(directory, { recursive: true, force: true })
+  }
+})
+
+test('unavailable public feeds and invalid publisher URLs preserve the original queue', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'glean-unavailable-feed-'))
+  const requested: Array<string | undefined> = []
+  const server = createServer((request, response) => {
+    requested.push(request.url)
+    response.writeHead(request.url === '/good' ? 200 : 503, { 'content-type': 'application/rss+xml' })
+    response.end('<rss version="2.0"><channel><title>Updates</title><item><title>New grant</title><link>https://example.org/new</link></item></channel></rss>')
+  })
+  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
+  try {
+    const address = server.address()
+    assert.ok(address && typeof address !== 'string')
+    const sources = join(directory, 'sources.json')
+    const output = join(directory, 'leads.json')
+    const original = '{"version":1,"leads":[{"id":"saved","note":"keep manual review"}]}\n'
+    await writeFile(output, original)
+    const feeds = [
+      { id: 'working', name: 'Working feed', url: `http://127.0.0.1:${address.port}/good` },
+      { id: 'unavailable', name: 'Unavailable feed', url: `http://127.0.0.1:${address.port}/unavailable` },
+    ]
+    await writeFile(sources, JSON.stringify({ lookbackDays: 30, feeds }))
+    const unavailable = await runCollector(sources, output)
+    assert.notEqual(unavailable.code, 0)
+    assert.match(unavailable.stderr, /unavailable: HTTP 503/)
+    assert.equal(await readFile(output, 'utf8'), original)
+    assert.deepEqual(requested, ['/good', '/unavailable'])
+
+    await writeFile(sources, JSON.stringify({ lookbackDays: 30, feeds: [{ ...feeds[0], siteUrl: 'javascript:alert(1)' }] }))
+    const invalid = await runCollector(sources, output)
+    assert.notEqual(invalid.code, 0)
+    assert.match(invalid.stderr, /siteUrl/)
+    assert.equal(await readFile(output, 'utf8'), original)
+    assert.deepEqual(requested, ['/good', '/unavailable'])
   } finally {
     server.close()
     await rm(directory, { recursive: true, force: true })

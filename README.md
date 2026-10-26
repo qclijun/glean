@@ -124,11 +124,11 @@ npm run preview
 
 ### 内部线索队列
 
-运行 `npm run collect:leads` 后，CLI 从 [`config/lead-sources.json`](config/lead-sources.json) 读取官方订阅源，把近 30 天以及未标注发布日期的条目写入被 Git 忽略的 `.glean/leads.json`。首次运行会收集窗口内的历史条目；后续运行按来源 ID 和条目 URL 去重，保留已存线索。也可通过 `npm run collect:leads -- --sources /path/sources.json --output /path/leads.json` 指定配置和输出路径。测试使用本地 RSS/Atom 服务及模拟 Galxe API，不依赖外部网站。
+运行 `npm run collect:leads` 后，CLI 从 [`config/lead-sources.json`](config/lead-sources.json) 读取配置的 RSS/Atom 订阅源，把近 30 天以及未标注发布日期的条目写入被 Git 忽略的 `.glean/leads.json`。首次运行会收集窗口内的历史条目；后续运行按来源 ID 和条目 URL 去重，保留已存线索。也可通过 `npm run collect:leads -- --sources /path/sources.json --output /path/leads.json` 指定配置和输出路径。测试使用本地 RSS/Atom 服务及模拟 Galxe API，不依赖外部网站。
 
 可在配置的 `galxeSpaces` 中加入已知 Space 的 `id`、显示 `name` 与其 `https://app.galxe.com/quest/<slug>` 页面路径中的 `slug`。CLI 使用 [Galxe Quest API](https://docs.galxe.com/galxe-integration/api-reference/quest) 按 Space 分页读取 `Active`、`NotStarted` 任务，并把任务页链接写入同一队列。令牌通过 `GALXE_ACCESS_TOKEN` 环境变量提供，不能写进配置或提交到 Git；[Galxe 鉴权说明](https://docs.galxe.com/galxe-integration/getting-started/authentication)列出了获取方式。默认 `galxeSpaces` 为空，不需要令牌，也不会查询 Galxe。此接口不保证全站发现；没有令牌或已知 Space 时，不能执行 Galxe 实时检查。
 
-所有条目初始状态都是 `unverified`：订阅源文章只是**活动线索**，并不代表已经确认存在奖励活动。人工核实主办方规则、资格、奖励、费用与截止时间后，才应考虑写入 [`src/data.ts`](src/data.ts) 的公开快照。当前仅内置一个已验证可读取的 Ethereum Foundation 官方订阅源；更多来源可在配置中增加。抓取失败时命令退出非零且不改写现有队列。
+所有条目初始状态都是 `unverified`：订阅源文章只是**活动线索**，并不代表已经确认存在奖励活动。人工核实主办方规则、资格、奖励、费用与截止时间后，才应考虑写入 [`src/data.ts`](src/data.ts) 的公开快照。默认配置包含实测可读取的 Ethereum Foundation 和 Arbitrum 博客源；也可配置公开频道的 RSSHub feed。新条目保留 GUID/Atom ID、作者及更新时间，可用 `siteUrl` 保存原网站或频道地址。配置示例、字段含义及覆盖限制见[公开公告与 RSS 线索](docs/lead-sources.md)。抓取失败时命令退出非零且不改写现有队列。
 
 ## 开发与验证
 

@@ -4,7 +4,14 @@
     {
       "id": "ethereum-blog",
       "name": "Ethereum Foundation Blog",
-      "url": "https://blog.ethereum.org/en/feed.xml"
+      "url": "https://blog.ethereum.org/en/feed.xml",
+      "siteUrl": "https://blog.ethereum.org/"
+    },
+    {
+      "id": "arbitrum-blog",
+      "name": "Arbitrum Ecosystem Blog",
+      "url": "https://blog.arbitrum.io/rss/",
+      "siteUrl": "https://blog.arbitrum.io/"
     }
   ],
   "galxeSpaces": []

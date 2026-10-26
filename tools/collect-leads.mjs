@@ -50,8 +50,9 @@ function validateSources(config) {
   const ids = new Set()
   for (const feed of config.feeds) {
     if (typeof feed?.id !== 'string' || !feed.id.trim() || ids.has(feed.id) ||
-        typeof feed.name !== 'string' || !feed.name.trim() || !webUrl(feed.url)) {
-      throw new Error('Each feed needs a unique id, name, and HTTP(S) URL')
+        typeof feed.name !== 'string' || !feed.name.trim() || !webUrl(feed.url) ||
+        (feed.siteUrl !== undefined && !webUrl(feed.siteUrl))) {
+      throw new Error('Each feed needs a unique id, name, HTTP(S) URL, and an HTTP(S) siteUrl if provided')
     }
     ids.add(feed.id)
   }
@@ -104,7 +105,7 @@ async function* galxeEntries(space, token) {
 }
 
 function entriesFrom(xml) {
-  const parsed = new XMLParser({ ignoreAttributes: false }).parse(xml)
+  const parsed = new XMLParser({ ignoreAttributes: false, parseTagValue: false }).parse(xml)
   const container = parsed?.rss?.channel ?? parsed?.feed
   if (!container || typeof container !== 'object') throw new Error('Expected an RSS channel or Atom feed')
   const entries = container.item ?? container.entry
@@ -119,11 +120,13 @@ function plainText(value) {
 }
 
 function entryUrl(entry) {
-  if (typeof entry.link === 'string') return webUrl(entry.link)
   const links = Array.isArray(entry.link) ? entry.link : [entry.link]
   const alternate = links.find(link => link?.['@_rel'] === 'alternate')
     ?? links.find(link => !link?.['@_rel'])
-  return webUrl(alternate?.['@_href'])
+  const url = webUrl(typeof entry.link === 'string' ? entry.link : alternate?.['@_href'])
+  if (url) return url
+  if (entry.guid?.['@_isPermaLink'] === 'false') return null
+  return webUrl(plainText(entry.guid))
 }
 
 function leadFrom(entry, feed, cutoff, discoveredAt) {
@@ -132,13 +135,17 @@ function leadFrom(entry, feed, cutoff, discoveredAt) {
   const dateText = entry.pubDate ?? entry.published ?? entry.updated
   const date = dateText ? new Date(dateText) : null
   if (!title || !url || (date && (!Number.isFinite(date.getTime()) || date < cutoff))) return null
+  const updatedDate = new Date(plainText(entry.updated ?? entry['atom:updated']))
   const id = createHash('sha256').update(`${feed.id}\n${url}`).digest('hex')
   return {
     id,
-    source: { id: feed.id, name: feed.name, url: feed.url },
+    source: { id: feed.id, name: feed.name, url: feed.url, ...(feed.siteUrl ? { siteUrl: webUrl(feed.siteUrl) } : {}) },
+    entryId: plainText(entry.guid ?? entry.id) || null,
+    author: plainText(entry['dc:creator']) || plainText(entry.author?.name) || plainText(entry.author) || null,
     title,
     url,
     publishedAt: date?.toISOString() ?? null,
+    updatedAt: Number.isFinite(updatedDate.getTime()) ? updatedDate.toISOString() : null,
     discoveredAt,
     status: 'unverified',
   }
