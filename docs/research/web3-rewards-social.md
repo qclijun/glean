@@ -25,6 +25,6 @@
 - Discord 先用官方 Announcement Following；需要源频道正文时申请合规 bot 权限。Farcaster 从 Neynar 查询/API 小样本验证开始；自建 Snapchain 仅在吞吐或数据所有权值得其机器成本时考虑。X 在取得官方 API 访问和预算后再评估；研究阶段无实测召回率、告警延迟或误报率。
 - 所有候选至少保留 `source_url`、`source_type`、`author_id`、`published_at`、`fetched_at`、`canonical_project_url`、`claim_text`、`verification_status`。同活动跨平台合并时以项目活动 URL 和规则版本为准，保留每条原始消息作证据。过期、资格不明、只有积分或实物奖励的线索应保持相应状态，不能推断可提现收益。
 
-## 未取得的参考帖
+## 参考帖后续核验
 
-[用户给定的 X 参考帖](https://x.com/yujuhao/status/2113943584441282682) 的正文无法核验：Agent Reach 的 Twitter thread 返回 `NEED_LOGIN`（缺 `ct0`），网页访问返回 403。没有使用其内容、没有登录或请求会话凭证；若以后获得合法可读原文，需重新核对作者、时间、完整上下文和其所指的一手项目来源。
+2026-10-26 经用户要求，用其已连接的 Chrome 会话通过 Agent Reach 所依赖的 OpenCLI 只读适配器取得[原帖](https://x.com/yujuhao/status/2113943584441282682)正文。作者为 `yujuhao`，发帖时间为 2026-10-24 10:40 UTC；正文是“几个撸毛常用网站和工具”的清单，涵盖空投项目、TGE 时间、融资、链上收入、批量生成钱包、批量查询空投、指纹浏览器、IP 购买、钱包安装和项目表格。它附一张图片，正文链接均显示为 `t.co` 短链；本轮未解析短链终点，也未核验所列工具。它是拓展候选来源的社交线索，不是活动数据质量或工具安全性的证明。先前 Agent Reach 专用浏览器缺 X 登录态返回 `NEED_LOGIN`，公开网页返回 403；改走用户 Chrome 后已成功读取。
