@@ -23,3 +23,8 @@
 ## Galxe 已知 Space 线索收集交接
 
 目标：依据工单 03 的平台调研，把官方 Galxe Quest API 的已知 Space 读取接入现有内部 CLI，不推断全站覆盖。配置增加可选 `galxeSpaces`；运行者在环境变量提供访问令牌后，命令分页读取 Active 和 NotStarted 任务，把任务页链接、来源和发现时间写入原有待核验 JSON 队列，并保持重复运行去重。提交见本阶段 `git log -1`；证据见 `tools/collect-leads.mjs`、`tests/collect-leads.test.ts`、`config/lead-sources.json` 与 README。测试以本地模拟 GraphQL 两页数据先红后绿，并补测缺 token 时抓取前失败、原队列保留。默认 RSS 实源冒烟新增零条；当前环境没有 Galxe token，因此未实测其线上鉴权和数据。待办：用户配置已知 Space 与令牌后做真实只读冒烟，再人工核验线索质量；未接入需要管理员权限的 Zealy 任务接口。
+
+
+## 公开公告/RSS 采集交接（#4）
+
+目标：按用户确认的工单 #4 范围补齐公开公告/RSS 采集，复用内部 CLI。实现提交 `8547a0f`：增加实测可读的 Arbitrum 博客源，保留 Ethereum；新条目保存 GUID/Atom ID、作者、更新时间及可选原网站/频道地址，支持仅以 permalink GUID 提供链接的 RSS，并提供公开频道 RSSHub 配置说明。验证：两条新能力测试先红后绿，采集器八项、全量逻辑十三项、浏览器六项及构建、应用与测试类型检查通过。隔离队列实源首次七条，重跑字节不变；证据见 `/tmp/glean-04-verification.json`、`/tmp/glean-04-smoke-summary.json`。规范审查无必须修复项，仅建议以后提取重复测试夹具；规格审查无问题，报告见 `/tmp/glean-04-review-standards.md`、`/tmp/glean-04-review-spec.md`。后续按需配置真实 RSSHub 实例与频道；本轮仅本地模拟其 feed，未实测线上实例。普通博客条目仍需人工核实，旧队列不回填元数据，同 URL 编辑不覆盖首次记录；使用方式和来源限制见 `docs/lead-sources.md`。
