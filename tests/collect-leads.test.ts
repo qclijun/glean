@@ -9,9 +9,9 @@ import test from 'node:test'
 
 const collector = fileURLToPath(new URL('../tools/collect-leads.mjs', import.meta.url))
 
-function runCollector(sources: string, output: string): Promise<{ code: number | null; stderr: string }> {
+function runCollector(sources: string, output: string, env: Record<string, string> = {}): Promise<{ code: number | null; stderr: string }> {
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [collector, '--sources', sources, '--output', output])
+    const child = spawn(process.execPath, [collector, '--sources', sources, '--output', output], { env: { ...process.env, ...env } })
     let stderr = ''
     child.stderr.setEncoding('utf8').on('data', chunk => { stderr += chunk })
     child.on('error', reject)
@@ -60,6 +60,77 @@ test('official RSS items enter the internal lead queue once, within the configur
     assert.deepEqual(nextQueue.leads.find((lead: { url: string }) => lead.url === 'https://example.org/grant'), firstQueue.leads[0])
   } finally {
     server.close()
+    await rm(directory, { recursive: true, force: true })
+  }
+})
+
+test('Galxe quests from a known Space enter the same queue across pages and dedupe on rerun', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'glean-galxe-'))
+  const cursors: Array<string | null> = []
+  const server = createServer(async (request, response) => {
+    let body = ''
+    for await (const chunk of request) body += chunk
+    const payload = JSON.parse(body)
+    assert.equal(request.headers['access-token'], 'test-token')
+    assert.equal(payload.variables.input.spaceId, '40')
+    assert.deepEqual(payload.variables.input.statuses, ['Active', 'NotStarted'])
+    const cursor = payload.variables.input.after ?? null
+    cursors.push(cursor)
+    response.writeHead(200, { 'content-type': 'application/json' })
+    response.end(JSON.stringify({ data: { quests: cursor
+      ? { list: [{ id: 'quest-2', name: 'Points quest', status: 'NotStarted' }], pageInfo: { hasNextPage: false, endCursor: 'page-2' } }
+      : { list: [{ id: 'quest-1', name: 'Airdrop quest', status: 'Active' }], pageInfo: { hasNextPage: true, endCursor: 'page-1' } },
+    } }))
+  })
+  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
+  try {
+    const address = server.address()
+    assert.ok(address && typeof address !== 'string')
+    const sources = join(directory, 'sources.json')
+    const output = join(directory, 'leads.json')
+    await writeFile(sources, JSON.stringify({ lookbackDays: 30, feeds: [], galxeSpaces: [
+      { id: '40', name: 'Galxe', slug: 'Galxe' },
+    ] }))
+    const env = { GALXE_ACCESS_TOKEN: 'test-token', GALXE_API_URL: `http://127.0.0.1:${address.port}/query` }
+
+    const first = await runCollector(sources, output, env)
+    assert.equal(first.code, 0, first.stderr)
+    const queue = JSON.parse(await readFile(output, 'utf8'))
+    assert.equal(queue.leads.length, 2)
+    assert.deepEqual(queue.leads.map((lead: { url: string }) => lead.url), [
+      'https://app.galxe.com/quest/Galxe/quest-1',
+      'https://app.galxe.com/quest/Galxe/quest-2',
+    ])
+    assert.equal(queue.leads[0].source.id, 'galxe:40')
+    assert.ok(queue.leads.every((lead: { status: string }) => lead.status === 'unverified'))
+    assert.deepEqual(cursors, [null, 'page-1'])
+
+    const second = await runCollector(sources, output, env)
+    assert.equal(second.code, 0, second.stderr)
+    assert.deepEqual(JSON.parse(await readFile(output, 'utf8')), queue)
+  } finally {
+    server.close()
+    await rm(directory, { recursive: true, force: true })
+  }
+})
+
+test('a configured Galxe Space without a token fails before fetching and preserves the queue', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'glean-galxe-token-'))
+  try {
+    const sources = join(directory, 'sources.json')
+    const output = join(directory, 'leads.json')
+    const original = JSON.stringify({ version: 1, leads: [{ id: 'existing', status: 'reviewed' }] })
+    await writeFile(output, original)
+    await writeFile(sources, JSON.stringify({ lookbackDays: 30,
+      feeds: [{ id: 'offline', name: 'Offline', url: 'http://127.0.0.1:1/rss' }],
+      galxeSpaces: [{ id: '40', name: 'Galxe', slug: 'Galxe' }],
+    }))
+
+    const result = await runCollector(sources, output, { GALXE_ACCESS_TOKEN: '' })
+    assert.notEqual(result.code, 0)
+    assert.match(result.stderr, /GALXE_ACCESS_TOKEN is required/)
+    assert.equal(await readFile(output, 'utf8'), original)
+  } finally {
     await rm(directory, { recursive: true, force: true })
   }
 })

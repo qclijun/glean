@@ -18,14 +18,14 @@ Glean 希望帮助用户从分散的公告和社区信息中，找到低门槛�
 | 个人观察清单 | 收藏活动、勾选参与步骤，刷新后保留记录 |
 | 收益计算器 | 将获奖概率、Gas、其他费用和时间成本纳入估算 |
 | 活动线索草稿 | 在当前浏览器保存待审核线索，尚未发送到服务器 |
-| 内部线索收集 | 本地 CLI 从配置的官方 RSS/Atom 订阅源收集待核验条目，重复运行去重 |
+| 内部线索收集 | 本地 CLI 从官方 RSS/Atom 及已知 Galxe Space 收集待核验条目，重复运行去重 |
 | 手机浏览 | 响应式布局及移动端导航 |
 
 网站没有自动采集、实时价格、用户账户后端、合约审计或钱包签名功能。CLI 收集的线索只写入本机文件，不会进入网站。网站中的“提交活动”保存为**本地草稿**；向项目维护者提供线索，请通过 GitHub Issues。
 
 ## 快速开始
 
-需要 Node.js **22.18+**（建议 24）、npm 和 Git。当前本地开发无需 API Key 或环境变量。
+需要 Node.js **22.18+**（建议 24）、npm 和 Git。默认 RSS 收集及本地开发无需 API Key；启用 Galxe 来源时另需访问令牌。
 
 ```bash
 git clone https://github.com/qclijun/glean.git
@@ -44,7 +44,7 @@ npm run dev
 | `npm run build` | TypeScript 检查并生成 `dist/` |
 | `npm run preview` | 本地预览生产构建，默认端口 4173 |
 | `npm test` | 运行评分、筛选及收益计算的逻辑测试 |
-| `npm run collect:leads` | 抓取配置的 RSS/Atom 订阅源，更新本地待核验队列 |
+| `npm run collect:leads` | 读取配置的 RSS/Atom 与 Galxe 来源，更新本地待核验队列 |
 | `npx playwright test` | 运行浏览器交互测试 |
 
 生产构建与预览：
@@ -124,7 +124,9 @@ npm run preview
 
 ### 内部线索队列
 
-运行 `npm run collect:leads` 后，CLI 从 [`config/lead-sources.json`](config/lead-sources.json) 读取官方订阅源，把近 30 天以及未标注发布日期的条目写入被 Git 忽略的 `.glean/leads.json`。首次运行会收集窗口内的历史条目；后续运行按来源 ID 和条目 URL 去重，保留已存线索。也可通过 `npm run collect:leads -- --sources /path/sources.json --output /path/leads.json` 指定配置和输出路径。测试使用本地 RSS/Atom 服务，不依赖外部网站。
+运行 `npm run collect:leads` 后，CLI 从 [`config/lead-sources.json`](config/lead-sources.json) 读取官方订阅源，把近 30 天以及未标注发布日期的条目写入被 Git 忽略的 `.glean/leads.json`。首次运行会收集窗口内的历史条目；后续运行按来源 ID 和条目 URL 去重，保留已存线索。也可通过 `npm run collect:leads -- --sources /path/sources.json --output /path/leads.json` 指定配置和输出路径。测试使用本地 RSS/Atom 服务及模拟 Galxe API，不依赖外部网站。
+
+可在配置的 `galxeSpaces` 中加入已知 Space 的 `id`、显示 `name` 与其 `https://app.galxe.com/quest/<slug>` 页面路径中的 `slug`。CLI 使用 [Galxe Quest API](https://docs.galxe.com/galxe-integration/api-reference/quest) 按 Space 分页读取 `Active`、`NotStarted` 任务，并把任务页链接写入同一队列。令牌通过 `GALXE_ACCESS_TOKEN` 环境变量提供，不能写进配置或提交到 Git；[Galxe 鉴权说明](https://docs.galxe.com/galxe-integration/getting-started/authentication)列出了获取方式。默认 `galxeSpaces` 为空，不需要令牌，也不会查询 Galxe。此接口不保证全站发现；没有令牌或已知 Space 时，不能执行 Galxe 实时检查。
 
 所有条目初始状态都是 `unverified`：订阅源文章只是**活动线索**，并不代表已经确认存在奖励活动。人工核实主办方规则、资格、奖励、费用与截止时间后，才应考虑写入 [`src/data.ts`](src/data.ts) 的公开快照。当前仅内置一个已验证可读取的 Ethereum Foundation 官方订阅源；更多来源可在配置中增加。抓取失败时命令退出非零且不改写现有队列。
 

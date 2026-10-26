@@ -19,3 +19,7 @@
 ## 内部线索收集交接
 
 目标：按用户确认的 CLI 边界，交付首个只读内部线索收集功能。本阶段提交见 `git log -2`；新增可配置的 RSS/Atom 官方来源抓取命令、30 天回看、稳定 URL 去重和本地待核验 JSON 队列，输出目录被 Git 忽略，公开活动快照未改。证据见 `tests/collect-leads.test.ts`、`tools/collect-leads.mjs`、`config/lead-sources.json` 和 README 的“内部线索队列”；本地样本先红后绿，`npm test` 八项、构建和 Playwright 六项均通过。官方 Ethereum feed 冒烟首次收集五条，重跑新增零条；这些条目只是未核验线索，当前订阅源包含与奖励无关的文章。审查发现并补测了空 RSS/Atom 源正常返回零条。待办：人工核验并扩充定向官方源，再评估误报和召回；没有自动发布、社交平台抓取或定时运行。
+
+## Galxe 已知 Space 线索收集交接
+
+目标：依据工单 03 的平台调研，把官方 Galxe Quest API 的已知 Space 读取接入现有内部 CLI，不推断全站覆盖。配置增加可选 `galxeSpaces`；运行者在环境变量提供访问令牌后，命令分页读取 Active 和 NotStarted 任务，把任务页链接、来源和发现时间写入原有待核验 JSON 队列，并保持重复运行去重。提交见本阶段 `git log -1`；证据见 `tools/collect-leads.mjs`、`tests/collect-leads.test.ts`、`config/lead-sources.json` 与 README。测试以本地模拟 GraphQL 两页数据先红后绿，并补测缺 token 时抓取前失败、原队列保留。默认 RSS 实源冒烟新增零条；当前环境没有 Galxe token，因此未实测其线上鉴权和数据。待办：用户配置已知 Space 与令牌后做真实只读冒烟，再人工核验线索质量；未接入需要管理员权限的 Zealy 任务接口。
